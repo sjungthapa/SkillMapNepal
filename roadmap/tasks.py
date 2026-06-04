@@ -29,12 +29,11 @@ def generate_roadmap_task(self, report_id):
             cv_upload=report.cv_upload
         ).values_list('normalized_name', flat=True)
 
-        # Get top 10 gap items
-        gap_items = GapItem.objects.filter(
-            report=report
-        ).order_by('priority_rank')[:10]
+        # Get top 10 gap items - separate queryset from sliced list
+        gap_items_qs = GapItem.objects.filter(report=report).order_by('priority_rank')
+        gap_items = list(gap_items_qs[:10])
 
-        if not gap_items.exists():
+        if not gap_items:
             logger.warning(f"No gap items found for report {report_id}")
             return
 
@@ -59,8 +58,8 @@ def generate_roadmap_task(self, report_id):
             )
 
             for item_data in roadmap_data.get('roadmap', []):
-                # Find corresponding gap item
-                gap_item = gap_items.filter(
+                # Find corresponding gap item (use full queryset, not sliced list)
+                gap_item = gap_items_qs.filter(
                     skill_name=item_data['skill_name']
                 ).first()
 

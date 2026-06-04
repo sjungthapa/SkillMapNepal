@@ -260,3 +260,20 @@ LOGGING = {
         },
     },
 }
+
+# Database compatibility check for pgvector
+import sys
+from django.core.exceptions import ImproperlyConfigured
+
+db_url = config('DATABASE_URL', default='sqlite:///db.sqlite3')
+if 'sqlite' in db_url and any(cmd in sys.argv for cmd in ['migrate', 'makemigrations']):
+    import warnings
+    warnings.warn(
+        "\n"
+        "=" * 80 + "\n"
+        "WARNING: You are using SQLite but models require pgvector (PostgreSQL).\n"
+        "Migrations may fail. Update DATABASE_URL in your .env file.\n"
+        "Example: DATABASE_URL=postgresql://user:pass@localhost:5432/dbname\n"
+        "=" * 80,
+        RuntimeWarning
+    )

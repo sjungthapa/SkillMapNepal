@@ -21,7 +21,7 @@ SkillMap Nepal analyzes your CV against real job market demands from major Nepal
 - **Web Scraping**: Playwright (async)
 - **CV Parsing**: pdfplumber + python-docx + spaCy
 - **NLP/ML**: sentence-transformers (all-MiniLM-L6-v2, 384 dimensions)
-- **AI**: Claude API (claude-sonnet-4-20250514)
+- **AI**: Google Gemini API (gemini-2.0-flash) — FREE tier
 - **Storage**: Cloudinary (CV files)
 - **Frontend**: Django Templates + Tailwind CSS + Chart.js
 - **Deployment**: Docker + Gunicorn + Nginx
@@ -31,7 +31,7 @@ SkillMap Nepal analyzes your CV against real job market demands from major Nepal
 1. User uploads CV (PDF/DOCX)
 2. Celery task: Parse CV → Extract skills → Vectorize with sentence-transformers
 3. Celery task: Analyze skill gaps using pgvector cosine similarity
-4. Celery task: Generate roadmap using Claude API
+4. Celery task: Generate roadmap using Google Gemini API
 5. User views dashboard with charts and personalized roadmap
 ```
 
@@ -173,7 +173,7 @@ REDIS_URL=redis://redis:6379/0
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
-ANTHROPIC_API_KEY=your-anthropic-api-key
+GEMINI_API_KEY=your-gemini-api-key
 ALLOWED_HOSTS=localhost,127.0.0.1
 ```
 
@@ -382,10 +382,11 @@ docker-compose logs redis
 - Check scraper task logs in admin
 - Sites may have changed structure
 
-### Claude API Error
-- Verify ANTHROPIC_API_KEY
-- Check API quota
+### Gemini API Error
+- Verify GEMINI_API_KEY in .env
+- Check API quota (free tier limit)
 - Review roadmap task logs
+- Ensure genai.configure() is inside function (not module level)
 
 ## 📦 Docker Services
 

@@ -103,9 +103,13 @@ def report_status(request, report_id):
     # Get associated report if exists
     report = SkillGapReport.objects.filter(cv_upload=cv_upload).first()
     
+    # Check if running in eager mode (tasks run synchronously)
+    eager_mode = getattr(settings, 'CELERY_TASK_ALWAYS_EAGER', False)
+    
     status_data = {
         'parse_status': cv_upload.parse_status,
         'has_report': report is not None,
+        'eager_mode': eager_mode,
     }
     
     if report:
@@ -113,6 +117,7 @@ def report_status(request, report_id):
             'report_status': report.status,
             'report_id': str(report.id),
             'readiness_score': report.readiness_score,
+            'ready': report.status in ['ready', 'failed'],
         })
         
         # Check if roadmap exists

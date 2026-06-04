@@ -59,3 +59,7 @@ logs/
 
 # Cloudinary
 .cloudinary/
+
+# Development/test scripts (production)
+scripts/*.py
+!scripts/__init__.py
