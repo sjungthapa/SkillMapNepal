@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile - SkillMap Nepal{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold text-gray-800 mb-6">Your Profile</h1>
+
+<div class="grid md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">Account Information</h2>
+        <dl class="space-y-3">
+            <div>
+                <dt class="text-sm text-gray-600">Full Name</dt>
+                <dd class="font-medium">{{ user.full_name }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm text-gray-600">Email</dt>
+                <dd class="font-medium">{{ user.email }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm text-gray-600">Phone</dt>
+                <dd class="font-medium">{{ user.phone|default:"Not provided" }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm text-gray-600">Member Since</dt>
+                <dd class="font-medium">{{ user.created_at|date:"F d, Y" }}</dd>
+            </div>
+        </dl>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">Statistics</h2>
+        <dl class="space-y-3">
+            <div>
+                <dt class="text-sm text-gray-600">CV Uploads</dt>
+                <dd class="font-medium text-2xl text-blue-600">{{ cv_uploads.count }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm text-gray-600">Reports Generated</dt>
+                <dd class="font-medium text-2xl text-green-600">{{ reports.count }}</dd>
+            </div>
+        </dl>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-md p-6 mt-6">
+    <h2 class="text-xl font-semibold mb-4">Analysis History</h2>
+    {% if reports %}
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-2 text-left">Date</th>
+                    <th class="px-4 py-2 text-left">Readiness Score</th>
+                    <th class="px-4 py-2 text-left">Jobs Matched</th>
+                    <th class="px-4 py-2 text-left">Status</th>
+                    <th class="px-4 py-2 text-left">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in reports %}
+                <tr class="border-t">
+                    <td class="px-4 py-2">{{ report.generated_at|date:"M d, Y" }}</td>
+                    <td class="px-4 py-2">{{ report.readiness_score }}%</td>
+                    <td class="px-4 py-2">{{ report.total_jobs_matched }}</td>
+                    <td class="px-4 py-2">
+                        <span class="px-2 py-1 text-xs rounded {% if report.status == 'ready' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                            {{ report.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-2">
+                        <a href="{% url 'dashboard:view_report' report.id %}" class="text-blue-600 hover:underline">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-gray-500">No reports yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

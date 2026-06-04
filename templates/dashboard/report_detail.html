@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Skill Gap Report - SkillMap Nepal{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <a href="{% url 'dashboard:dashboard_home' %}" class="text-blue-600 hover:underline mb-4 inline-block">&larr; Back to Dashboard</a>
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">Skill Gap Analysis Report</h1>
+    <p class="text-gray-600">Generated on {{ report.generated_at|date:"F d, Y" }}</p>
+</div>
+
+<div class="grid md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow-md p-6 text-center">
+        <div class="text-5xl font-bold text-blue-600 mb-2">{{ report.readiness_score }}%</div>
+        <div class="text-gray-600 font-semibold">Market Readiness</div>
+        <canvas id="readinessGauge" class="mt-4"></canvas>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-6 text-center">
+        <div class="text-5xl font-bold text-green-600 mb-2">{{ report.total_jobs_matched }}</div>
+        <div class="text-gray-600 font-semibold">Jobs Matched</div>
+        <p class="text-sm text-gray-500 mt-4">Jobs where you meet 30%+ requirements</p>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-6 text-center">
+        <div class="text-5xl font-bold text-orange-600 mb-2">{{ gap_items.count }}</div>
+        <div class="text-gray-600 font-semibold">Skills to Learn</div>
+        <p class="text-sm text-gray-500 mt-4">High-demand missing skills</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <h2 class="text-2xl font-semibold mb-4">Top Skills in Demand (Missing from Your Profile)</h2>
+    <canvas id="gapChart" height="80"></canvas>
+</div>
+
+<div class="grid md:grid-cols-2 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">Your Current Skills</h2>
+        <div class="flex flex-wrap gap-2">
+            {% for skill in user_skills %}
+            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">{{ skill.normalized_name }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">Priority Skills to Learn</h2>
+        <ul class="space-y-2">
+            {% for item in gap_items|slice:":5" %}
+            <li class="flex items-center justify-between">
+                <span class="font-medium">{{ item.skill_name }}</span>
+                <span class="text-sm text-gray-500">{{ item.demand_frequency }} jobs</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+{% if roadmap %}
+<div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg shadow-md p-6 text-center">
+    <h2 class="text-2xl font-semibold mb-2">Your Learning Roadmap is Ready! 🎉</h2>
+    <p class="mb-4">We've created a personalized week-by-week learning plan</p>
+    <a href="{% url 'dashboard:roadmap_view' report.id %}" class="bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 inline-block">
+        View Learning Roadmap
+    </a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Gap items chart
+const gapData = {
+    labels: [{% for item in gap_items|slice:":10" %}'{{ item.skill_name }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+    datasets: [{
+        label: 'Jobs Requiring This Skill',
+        data: [{% for item in gap_items|slice:":10" %}{{ item.demand_frequency }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+        borderColor: 'rgb(59, 130, 246)',
+        borderWidth: 2
+    }]
+};
+
+new Chart(document.getElementById('gapChart'), {
+    type: 'bar',
+    data: gapData,
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: {
+            legend: { display: false }
+        }
+    }
+});
+</script>
+{% endblock %}

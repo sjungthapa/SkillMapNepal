@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - SkillMap Nepal{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">Dashboard</h1>
+    <p class="text-gray-600">Welcome back, {{ user.full_name }}!</p>
+</div>
+
+{% if latest_report %}
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <h2 class="text-2xl font-semibold mb-4">Latest Analysis</h2>
+    
+    <div class="grid md:grid-cols-3 gap-6 mb-6">
+        <div class="text-center">
+            <div class="text-4xl font-bold text-blue-600 mb-2">{{ latest_report.readiness_score }}%</div>
+            <div class="text-gray-600">Readiness Score</div>
+        </div>
+        <div class="text-center">
+            <div class="text-4xl font-bold text-green-600 mb-2">{{ latest_report.total_jobs_matched }}</div>
+            <div class="text-gray-600">Jobs Matched</div>
+        </div>
+        <div class="text-center">
+            <div class="text-4xl font-bold text-orange-600 mb-2">{{ latest_report.gap_items.count }}</div>
+            <div class="text-gray-600">Skills to Learn</div>
+        </div>
+    </div>
+    
+    <div class="flex gap-4">
+        <a href="{% url 'dashboard:view_report' latest_report.id %}" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+            View Full Report
+        </a>
+        {% if latest_report.roadmap %}
+        <a href="{% url 'dashboard:roadmap_view' latest_report.id %}" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+            View Learning Roadmap
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <h2 class="text-2xl font-semibold mb-4">Quick Actions</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+        <a href="{% url 'dashboard:upload_cv' %}" class="border-2 border-blue-600 text-blue-600 px-6 py-4 rounded-lg hover:bg-blue-50 text-center">
+            Upload New CV
+        </a>
+        <a href="{% url 'dashboard:profile' %}" class="border-2 border-gray-300 text-gray-700 px-6 py-4 rounded-lg hover:bg-gray-50 text-center">
+            View Profile & History
+        </a>
+    </div>
+</div>
+
+{% if reports %}
+<div class="bg-white rounded-lg shadow-md p-6">
+    <h2 class="text-2xl font-semibold mb-4">Recent Reports</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-2 text-left">Date</th>
+                    <th class="px-4 py-2 text-left">Score</th>
+                    <th class="px-4 py-2 text-left">Jobs Matched</th>
+                    <th class="px-4 py-2 text-left">Status</th>
+                    <th class="px-4 py-2 text-left">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in reports %}
+                <tr class="border-t">
+                    <td class="px-4 py-2">{{ report.generated_at|date:"M d, Y" }}</td>
+                    <td class="px-4 py-2">{{ report.readiness_score }}%</td>
+                    <td class="px-4 py-2">{{ report.total_jobs_matched }}</td>
+                    <td class="px-4 py-2">
+                        <span class="px-2 py-1 text-xs rounded {% if report.status == 'ready' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                            {{ report.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-2">
+                        <a href="{% url 'dashboard:view_report' report.id %}" class="text-blue-600 hover:underline">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow-md p-6 text-center">
+    <p class="text-gray-600 mb-4">No reports yet. Upload your CV to get started!</p>
+    <a href="{% url 'dashboard:upload_cv' %}" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 inline-block">
+        Upload CV Now
+    </a>
+</div>
+{% endif %}
+{% endblock %}
