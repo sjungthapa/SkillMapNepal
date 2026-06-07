@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Analyzing Your CV — SkillMap Nepal{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+  <div class="bg-white rounded-2xl shadow-lg p-10 w-full max-w-lg text-center">
+
+    <!-- Spinner -->
+    <div id="spinner" class="flex justify-center mb-6">
+      <div class="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Success icon (hidden until done) -->
+    <div id="success-icon" class="hidden flex justify-center mb-6">
+      <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Error icon (hidden until failed) -->
+    <div id="error-icon" class="hidden flex justify-center mb-6">
+      <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+        <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </div>
+    </div>
+
+    <h1 class="text-2xl font-bold text-gray-800 mb-2" id="status-title">
+      Analyzing Your CV...
+    </h1>
+    <p class="text-gray-500 mb-8" id="status-message">
+      We're extracting your skills and comparing them with the Nepali job market. This usually takes a few seconds.
+    </p>
+
+    <!-- Progress steps -->
+    <div class="space-y-3 text-left mb-8">
+      <div class="flex items-center gap-3" id="step-parse">
+        <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0" id="step-parse-icon">
+          <div class="w-3 h-3 rounded-full bg-gray-400"></div>
+        </div>
+        <span class="text-sm text-gray-600">Parsing CV and extracting skills</span>
+      </div>
+      <div class="flex items-center gap-3" id="step-analyze">
+        <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0" id="step-analyze-icon">
+          <div class="w-3 h-3 rounded-full bg-gray-400"></div>
+        </div>
+        <span class="text-sm text-gray-600">Comparing with job market demand</span>
+      </div>
+      <div class="flex items-center gap-3" id="step-roadmap">
+        <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0" id="step-roadmap-icon">
+          <div class="w-3 h-3 rounded-full bg-gray-400"></div>
+        </div>
+        <span class="text-sm text-gray-600">Generating your personalized roadmap</span>
+      </div>
+    </div>
+
+    <!-- Redirect message -->
+    <p class="text-sm text-gray-400" id="redirect-msg"></p>
+
+  </div>
+</div>
+
+<script>
+  const STATUS_URL = "{% url 'dashboard:report_status' report_id=cv_upload.id %}?format=json";
+  const REPORT_URL = "/dashboard/report/";
+
+  let pollInterval = null;
+  let reportId = null;
+
+  function setStepDone(stepId) {
+    const icon = document.getElementById(stepId + '-icon');
+    icon.innerHTML = `<svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+    </svg>`;
+    icon.classList.remove('bg-gray-200');
+    icon.classList.add('bg-green-100');
+  }
+
+  function setStepActive(stepId) {
+    const icon = document.getElementById(stepId + '-icon');
+    icon.innerHTML = `<div class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>`;
+    icon.classList.remove('bg-gray-200');
+    icon.classList.add('bg-blue-100');
+  }
+
+  function updateUI(data) {
+    // Step 1: Parse
+    if (data.parse_status === 'done') {
+      setStepDone('step-parse');
+    } else if (data.parse_status === 'processing') {
+      setStepActive('step-parse');
+    }
+
+    // Step 2: Analyze
+    if (data.has_report) {
+      setStepDone('step-parse');
+      if (data.report_status === 'ready' || data.report_status === 'failed') {
+        setStepDone('step-analyze');
+      } else {
+        setStepActive('step-analyze');
+      }
+    }
+
+    // Step 3: Roadmap
+    if (data.has_roadmap) {
+      setStepDone('step-analyze');
+      setStepDone('step-roadmap');
+    } else if (data.report_status === 'ready') {
+      setStepActive('step-roadmap');
+    }
+
+    // Done — redirect to report
+    if (data.ready && data.report_id) {
+      reportId = data.report_id;
+
+      if (data.report_status === 'ready') {
+        clearInterval(pollInterval);
+        setStepDone('step-roadmap');
+
+        document.getElementById('spinner').classList.add('hidden');
+        document.getElementById('success-icon').classList.remove('hidden');
+        document.getElementById('status-title').textContent = 'Analysis Complete!';
+        document.getElementById('status-message').textContent = 'Your skill gap report and learning roadmap are ready.';
+
+        let countdown = 3;
+        document.getElementById('redirect-msg').textContent = `Redirecting in ${countdown}s...`;
+        const timer = setInterval(() => {
+          countdown--;
+          document.getElementById('redirect-msg').textContent = `Redirecting in ${countdown}s...`;
+          if (countdown <= 0) {
+            clearInterval(timer);
+            window.location.href = REPORT_URL + reportId + '/';
+          }
+        }, 1000);
+
+      } else if (data.report_status === 'failed') {
+        clearInterval(pollInterval);
+
+        document.getElementById('spinner').classList.add('hidden');
+        document.getElementById('error-icon').classList.remove('hidden');
+        document.getElementById('status-title').textContent = 'Analysis Failed';
+        document.getElementById('status-message').textContent = 'Something went wrong while analyzing your CV. Please try uploading again.';
+        document.getElementById('redirect-msg').innerHTML = `<a href="/dashboard/upload/" class="text-blue-600 underline">Try again</a>`;
+      }
+    }
+  }
+
+  function poll() {
+    fetch(STATUS_URL)
+      .then(res => res.json())
+      .then(data => updateUI(data))
+      .catch(err => console.error('Polling error:', err));
+  }
+
+  // Start polling every 2 seconds
+  setStepActive('step-parse');
+  poll(); // immediate first check
+  pollInterval = setInterval(poll, 2000);
+</script>
+{% endblock %}

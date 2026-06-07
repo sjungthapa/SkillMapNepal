@@ -218,6 +218,9 @@ CELERY_BEAT_SCHEDULE = {
 # Google Gemini API
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 
+# Groq API (free tier: 14,400 requests/day)
+GROQ_API_KEY = config('GROQ_API_KEY', default='')
+
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

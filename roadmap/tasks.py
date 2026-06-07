@@ -1,11 +1,11 @@
-"""Celery tasks for roadmap generation using Google Gemini API"""
+"""Celery tasks for roadmap generation using Groq API"""
 from celery import shared_task
 from django.conf import settings
 from django.db import transaction
 import logging
 import json
 
-import google.generativeai as genai
+from groq import Groq
 
 from .models import Roadmap, RoadmapItem, Resource
 from analysis.models import SkillGapReport, GapItem
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 @shared_task(bind=True, max_retries=3, default_retry_delay=120)
 def generate_roadmap_task(self, report_id):
     """
-    Generate learning roadmap using Google Gemini API
+    Generate learning roadmap using Groq API (Llama 3.3 70B)
     """
     try:
         report = SkillGapReport.objects.get(id=report_id)
@@ -29,7 +29,7 @@ def generate_roadmap_task(self, report_id):
             cv_upload=report.cv_upload
         ).values_list('normalized_name', flat=True)
 
-        # Get top 10 gap items - separate queryset from sliced list
+        # Get top 10 gap items
         gap_items_qs = GapItem.objects.filter(report=report).order_by('priority_rank')
         gap_items = list(gap_items_qs[:10])
 
@@ -37,8 +37,8 @@ def generate_roadmap_task(self, report_id):
             logger.warning(f"No gap items found for report {report_id}")
             return
 
-        # Generate roadmap using Gemini
-        roadmap_data = generate_roadmap_with_gemini(
+        # Generate roadmap using Groq
+        roadmap_data = generate_roadmap_with_groq(
             current_skills=list(user_skills),
             missing_skills=[
                 {
@@ -54,11 +54,11 @@ def generate_roadmap_task(self, report_id):
         with transaction.atomic():
             roadmap = Roadmap.objects.create(
                 report=report,
-                generated_by='gemini-2.0-flash'
+                generated_by='llama-3.3-70b-versatile'
             )
 
             for item_data in roadmap_data.get('roadmap', []):
-                # Find corresponding gap item (use full queryset, not sliced list)
+                # Find corresponding gap item using full queryset
                 gap_item = gap_items_qs.filter(
                     skill_name=item_data['skill_name']
                 ).first()
@@ -71,7 +71,7 @@ def generate_roadmap_task(self, report_id):
                     description=item_data['description']
                 )
 
-                # Save resources for this roadmap item
+                # Save resources
                 for resource_data in item_data.get('resources', []):
                     Resource.objects.create(
                         roadmap_item=roadmap_item,
@@ -96,7 +96,6 @@ def generate_roadmap_task(self, report_id):
     except Exception as exc:
         logger.error(f"Error generating roadmap: {str(exc)}")
 
-        # Mark report as failed
         try:
             report = SkillGapReport.objects.get(id=report_id)
             report.error_message = f"Roadmap generation failed: {str(exc)}"
@@ -107,24 +106,19 @@ def generate_roadmap_task(self, report_id):
         raise self.retry(exc=exc, countdown=120 * (2 ** self.request.retries))
 
 
-def generate_roadmap_with_gemini(current_skills, missing_skills):
+def generate_roadmap_with_groq(current_skills, missing_skills):
     """
-    Use Google Gemini API to generate a structured learning roadmap.
-    genai.configure() is called here (not at module level) to ensure
-    the API key is always read from settings at call time.
+    Use Groq API (Llama 3.3 70B) to generate a structured learning roadmap.
+    Groq has a generous free tier: 14,400 requests/day.
     """
-    # ✅ Configure inside the function — not at module load time
-    api_key = settings.GEMINI_API_KEY
+    api_key = settings.GROQ_API_KEY
     if not api_key:
         raise ValueError(
-            "GEMINI_API_KEY is not set. "
-            "Please add it to your .env file and restart the server."
+            "GROQ_API_KEY is not set. "
+            "Get a free key at https://console.groq.com and add it to your .env file."
         )
 
-    genai.configure(api_key=api_key)
-
-    # Use gemini-2.0-flash (available on free tier)
-    model = genai.GenerativeModel('gemini-2.0-flash')
+    client = Groq(api_key=api_key)
 
     prompt = f"""You are an expert tech career advisor creating personalized learning roadmaps for job seekers in Nepal.
 
@@ -171,17 +165,16 @@ Guidelines:
 8. Return ONLY valid JSON — no markdown, no extra text"""
 
     try:
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.7,
-                max_output_tokens=4000,
-            )
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=4000,
         )
 
-        response_text = response.text
+        response_text = response.choices[0].message.content
 
-        # Strip markdown code fences if Gemini wraps the JSON
+        # Strip markdown code fences if model wraps the JSON
         if '```json' in response_text:
             response_text = response_text.split('```json')[1].split('```')[0].strip()
         elif '```' in response_text:
@@ -198,26 +191,26 @@ Guidelines:
             roadmap_data = json.loads(response_text)
 
         logger.info(
-            f"Gemini generated roadmap with "
+            f"Groq generated roadmap with "
             f"{len(roadmap_data.get('roadmap', []))} items"
         )
 
         return roadmap_data
 
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse Gemini response as JSON: {e}")
+        logger.error(f"Failed to parse Groq response as JSON: {e}")
         logger.error(f"Response text preview: {response_text[:500]}")
         return generate_fallback_roadmap(missing_skills)
 
     except Exception as e:
-        logger.error(f"Gemini API error: {e}")
+        logger.error(f"Groq API error: {e}")
         raise
 
 
 def generate_fallback_roadmap(missing_skills):
     """
-    Generate a basic fallback roadmap if Gemini API fails.
-    This ensures users always get some output even if the API is down.
+    Generate a basic fallback roadmap if Groq API fails.
+    Ensures users always get some output even if the API is down.
     """
     roadmap = []
 
@@ -248,7 +241,7 @@ def generate_fallback_roadmap(missing_skills):
                 },
                 {
                     'title': f'{skill} Roadmap',
-                    'url': f'https://roadmap.sh',
+                    'url': 'https://roadmap.sh',
                     'platform': 'roadmap_sh',
                     'type': 'article'
                 }
