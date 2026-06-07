@@ -2,36 +2,39 @@
 
 An AI-powered job skill gap analyzer that helps Nepali tech job seekers identify missing skills and get personalized learning roadmaps.
 
-**✨ Now using Google Gemini API - FREE tier available!**
+**✨ Powered by Groq API (Llama 3.3 70B) — completely FREE!**
 
 ## 🎯 Overview
 
-SkillMap Nepal analyzes your CV against real job market demands from major Nepali job sites (Merojob.com, Kumarijob.com) and provides:
+SkillMap Nepal analyzes your CV against real job market demands from Merojob.com and provides:
+
 - Detailed skill gap analysis
 - Market readiness score (0-100%)
-- AI-generated personalized learning roadmap (powered by **Google Gemini - FREE!** 🎉)
-- Week-by-week learning plan with curated resources
+- AI-generated personalized learning roadmap (powered by **Groq API — FREE!** 🎉)
+- Week-by-week learning plan with curated free resources
 
 ## 🏗️ Architecture
 
 ### Technology Stack
+
 - **Backend**: Django 4.2+ with Django REST Framework
 - **Database**: PostgreSQL 16 with pgvector extension
 - **Task Queue**: Celery + Redis
-- **Web Scraping**: Playwright (async)
+- **Web Scraping**: Merojob API (api.merojob.com)
 - **CV Parsing**: pdfplumber + python-docx + spaCy
 - **NLP/ML**: sentence-transformers (all-MiniLM-L6-v2, 384 dimensions)
-- **AI**: Google Gemini API (gemini-2.0-flash) — FREE tier
+- **AI**: Groq API (Llama 3.3 70B) — FREE tier
 - **Storage**: Cloudinary (CV files)
 - **Frontend**: Django Templates + Tailwind CSS + Chart.js
 - **Deployment**: Docker + Gunicorn + Nginx
 
 ### System Flow
+
 ```
 1. User uploads CV (PDF/DOCX)
 2. Celery task: Parse CV → Extract skills → Vectorize with sentence-transformers
 3. Celery task: Analyze skill gaps using pgvector cosine similarity
-4. Celery task: Generate roadmap using Google Gemini API
+4. Celery task: Generate roadmap using Groq API (Llama 3.3 70B)
 5. User views dashboard with charts and personalized roadmap
 ```
 
@@ -39,39 +42,37 @@ SkillMap Nepal analyzes your CV against real job market demands from major Nepal
 
 #### `users/`
 - Custom User model with UUID primary key
-- Email-based authentication
+- Email-based authentication via django-allauth
 - Profile management
 
 #### `parser/`
-- CV upload handling
-- PDF/DOCX text extraction
-- spaCy NER for skill extraction
-- Skill normalization
+- CV upload handling (PDF/DOCX)
+- Text extraction with pdfplumber + python-docx
+- Tech skill extraction using keyword matching
 - Vectorization using sentence-transformers
 
 #### `scraper/`
-- Playwright-based scrapers for Merojob and Kumarijob
-- Job posting extraction
-- Skill identification from job descriptions
-- Runs via Celery beat (every 24 hours)
+- Merojob API integration (api.merojob.com)
+- IT & Telecommunication job scraping with pagination
+- Skill extraction from job descriptions
+- Runs via Celery beat every 24 hours
 - Deduplication by source_url
 
 #### `analysis/`
 - pgvector cosine similarity computation
 - Skill gap identification
-- Readiness score calculation
+- Readiness score calculation (0-100%)
 - Job matching algorithm
 
 #### `roadmap/`
-- **Google Gemini API integration (FREE tier!)**
+- Groq API integration (Llama 3.3 70B)
 - JSON-structured roadmap generation
-- Resource curation
+- Free resource curation
 - Week-by-week learning plans
 
 #### `dashboard/`
-- Dashboard views
-- Chart.js visualizations
-- AJAX status polling
+- Dashboard views with Chart.js visualizations
+- AJAX status polling with loading UI
 - Report history
 
 ## 📊 Database Models
@@ -134,7 +135,7 @@ SkillMap Nepal analyzes your CV against real job market demands from major Nepal
 ### ROADMAP (roadmap.Roadmap)
 - `id`: UUID PK
 - `report`: OneToOne FK
-- `generated_by`: str
+- `generated_by`: str (e.g. llama-3.3-70b-versatile)
 - `created_at`
 
 ### ROADMAP_ITEM (roadmap.RoadmapItem)
@@ -150,6 +151,7 @@ SkillMap Nepal analyzes your CV against real job market demands from major Nepal
 ## 🚀 Setup Instructions
 
 ### Prerequisites
+
 - Docker & Docker Compose
 - Python 3.11+
 - PostgreSQL 16 with pgvector
@@ -159,7 +161,7 @@ SkillMap Nepal analyzes your CV against real job market demands from major Nepal
 
 1. **Clone and setup**
 ```bash
-git clone <repository>
+git clone https://github.com/sjungthapa/SkillMapNepal.git
 cd SkillMapNepal
 cp .env.example .env
 ```
@@ -173,9 +175,11 @@ REDIS_URL=redis://redis:6379/0
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
-GEMINI_API_KEY=your-gemini-api-key
+GROQ_API_KEY=your-groq-api-key
 ALLOWED_HOSTS=localhost,127.0.0.1
 ```
+
+Get a free Groq API key at: https://console.groq.com
 
 3. **Build and run with Docker**
 ```bash
@@ -185,7 +189,6 @@ docker-compose up --build
 Services will be available at:
 - Web: http://localhost
 - Admin: http://localhost/admin
-- API: http://localhost/api (if configured)
 
 ### Local Development (without Docker)
 
@@ -201,13 +204,7 @@ pip install -r requirements.txt
 python -m spacy download en_core_web_md
 ```
 
-3. **Install Playwright browsers**
-```bash
-playwright install chromium
-playwright install-deps chromium
-```
-
-4. **Setup PostgreSQL with pgvector**
+3. **Setup PostgreSQL with pgvector**
 ```sql
 CREATE DATABASE skillmap_db;
 CREATE USER skillmap_user WITH PASSWORD 'skillmap_pass';
@@ -216,64 +213,47 @@ ALTER ROLE skillmap_user SET default_transaction_isolation TO 'read committed';
 ALTER ROLE skillmap_user SET timezone TO 'Asia/Kathmandu';
 GRANT ALL PRIVILEGES ON DATABASE skillmap_db TO skillmap_user;
 
--- Connect to skillmap_db
 \c skillmap_db
 CREATE EXTENSION vector;
 ```
 
-5. **Run migrations**
+4. **Run migrations**
 ```bash
-python manage.py makemigrations
 python manage.py migrate
 ```
 
-6. **Create superuser**
+5. **Create superuser**
 ```bash
 python manage.py createsuperuser
 ```
 
-7. **Collect static files**
+6. **Collect static files**
 ```bash
 python manage.py collectstatic
 ```
 
-8. **Run development servers**
+7. **Run development servers**
 
 Terminal 1 - Django:
 ```bash
 python manage.py runserver
 ```
 
-Terminal 2 - Celery Worker:
+Terminal 2 - Celery Worker (optional, set CELERY_TASK_ALWAYS_EAGER=True to skip):
 ```bash
 celery -A skillmap worker --loglevel=info
 ```
 
-Terminal 3 - Celery Beat:
+Terminal 3 - Celery Beat (optional):
 ```bash
 celery -A skillmap beat --loglevel=info
 ```
 
-Terminal 4 - Redis (if not using Docker):
-```bash
-redis-server
-```
-
 ## 📋 Management Commands
-
-### Seed skill normalization mappings
-```bash
-python manage.py seed_skills
-```
 
 ### Manually trigger job scraping
 ```bash
-# Scrape all sources
 python manage.py scrape_jobs
-
-# Scrape specific source
-python manage.py scrape_jobs --source merojob
-python manage.py scrape_jobs --source kumarijob
 ```
 
 ## 🔄 Celery Tasks
@@ -289,62 +269,52 @@ python manage.py scrape_jobs --source kumarijob
 
 ### Scheduled Tasks (Celery Beat)
 - `scrape_all_sources`: Runs every 24 hours
-- Scrapes Merojob and Kumarijob for latest tech jobs
 
 ### Retry Logic
 - All tasks have max 3 retries
 - Exponential backoff: 60s, 120s, 240s
-- Status tracking in database
+- Status tracked in database
 
 ## 🎨 Frontend Features
 
 ### Dashboard
-- Readiness score gauge (Chart.js)
-- Radar chart for skill coverage
+- Readiness score display
 - Bar chart for top missing skills
-- Report history table
+- Report history
 
 ### CV Upload
-- Drag & drop support
-- File validation (PDF, DOCX, max 10MB)
-- Upload history with status
+- PDF and DOCX support (max 10MB)
+- Real-time status page with progress steps
+- Auto-redirect to report when ready
 
 ### Report View
-- Interactive charts
-- Skill comparison
-- Gap prioritization
-- Roadmap link
+- Interactive Chart.js bar chart
+- Current skills display
+- Priority skills to learn
+- Matched jobs with percentage
 
 ### Roadmap View
-- Week-by-week timeline
-- Resource cards with links
-- Progress tracking
+- Week-by-week learning timeline
+- Free resource links per skill
 
 ## 🔒 Security
 
 - CSRF protection enabled
-- File upload validation
+- File upload validation (type + size)
 - SQL injection prevention (Django ORM)
 - XSS protection (Django templates)
 - Secrets in environment variables
-- User authentication required for all features
+- Authentication required for all features
 
 ## 🧪 Testing
 
 ```bash
-# Run all tests
 python manage.py test
-
-# Run specific app tests
-python manage.py test parser
-python manage.py test scraper
-python manage.py test analysis
-python manage.py test roadmap
 ```
 
 ## 📝 Admin Panel
 
-Access Django admin at `/admin/` to:
+Access at `/admin/` to:
 - View scrape job logs
 - Monitor CV parse status
 - Check report generation status
@@ -354,39 +324,29 @@ Access Django admin at `/admin/` to:
 
 ### PostgreSQL Connection Error
 ```bash
-# Check PostgreSQL is running
 docker-compose ps
-
-# View logs
 docker-compose logs db
 ```
 
 ### Celery Tasks Not Running
 ```bash
-# Check Celery worker logs
 docker-compose logs worker
-
-# Check Redis connection
 docker-compose logs redis
 ```
 
 ### CV Parsing Failed
-- Check Cloudinary credentials
-- Verify file format (PDF/DOCX only)
-- Check spaCy model installation
-- View parser task logs in admin
+- Check Cloudinary credentials in `.env`
+- Verify file is PDF or DOCX
+- Check spaCy model: `python -m spacy download en_core_web_md`
 
 ### Scraping Failed
-- Check Playwright installation
-- Verify network connectivity
-- Check scraper task logs in admin
-- Sites may have changed structure
+- Run `python manage.py scrape_jobs` manually
+- Check network connectivity to api.merojob.com
 
-### Gemini API Error
-- Verify GEMINI_API_KEY in .env
-- Check API quota (free tier limit)
-- Review roadmap task logs
-- Ensure genai.configure() is inside function (not module level)
+### Groq API Error
+- Verify `GROQ_API_KEY` in `.env`
+- Get a free key at https://console.groq.com
+- Check daily rate limit (14,400 requests/day on free tier)
 
 ## 📦 Docker Services
 
@@ -398,14 +358,15 @@ docker-compose logs redis
 
 ## 🔮 Future Enhancements
 
+- [ ] GitHub Actions CI/CD pipeline
+- [ ] Comprehensive test suite
 - [ ] Real-time WebSocket updates
 - [ ] Email notifications
 - [ ] PDF report export
-- [ ] More job sites (Jobs Nepal, etc.)
-- [ ] Skill endorsements
+- [ ] More job sites (Kumarijob, Jobs Nepal)
+- [ ] Multi-field support (Finance, Design, Marketing)
 - [ ] LinkedIn integration
 - [ ] Mobile app
-- [ ] Recommendation engine
 
 ## 📄 License
 
@@ -417,8 +378,8 @@ Built for Nepali tech job seekers 🇳🇵
 
 ## 🙏 Acknowledgments
 
-- Merojob.com and Kumarijob.com for job data
+- Merojob.com for job market data
 - spaCy for NLP
-- **Google Gemini for free AI-powered roadmap generation** 🎉
-- sentence-transformers for embeddings
+- **Groq API (Llama 3.3 70B) for free AI-powered roadmap generation** 🎉
+- sentence-transformers for skill embeddings
 - pgvector for vector similarity search
