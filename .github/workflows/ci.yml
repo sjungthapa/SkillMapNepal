@@ -78,6 +78,7 @@ jobs:
       - name: Enable pgvector extension
         run: |
           PGPASSWORD=testpassword psql -h localhost -U skillmap -d skillmap_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          PGPASSWORD=testpassword psql -h localhost -U skillmap -d postgres -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
       - name: Run migrations
         run: python manage.py migrate
