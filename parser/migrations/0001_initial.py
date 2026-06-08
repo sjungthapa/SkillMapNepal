@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
-import pgvector.django.vector
+from pgvector.django import VectorField
 import uuid
 
 
@@ -66,7 +66,7 @@ class Migration(migrations.Migration):
                 ("skill_name", models.CharField(max_length=255)),
                 ("normalized_name", models.CharField(max_length=255)),
                 ("confidence_score", models.FloatField(default=1.0)),
-                ("skill_vector", pgvector.django.vector.VectorField(dimensions=384)),
+                ("skill_vector", VectorField(dimensions=384)),
                 (
                     "cv_upload",
                     models.ForeignKey(
