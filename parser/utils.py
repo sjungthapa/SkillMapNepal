@@ -17,7 +17,7 @@ encoder = None
 # Skill normalization dictionary
 SKILL_MAPPINGS = {
     'reactjs': 'React.js',
-    'react': 'React.js',
+    'react.js': 'React.js',
     'vuejs': 'Vue.js',
     'vue': 'Vue.js',
     'nodejs': 'Node.js',

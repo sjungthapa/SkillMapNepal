@@ -1,4 +1,15 @@
-from django.db import migrations
+from django.db import migrations, connection
+
+
+def enable_pgvector(apps, schema_editor):
+    # Only run on PostgreSQL — skip SQLite (local dev)
+    if connection.vendor == 'postgresql':
+        schema_editor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+
+
+def disable_pgvector(apps, schema_editor):
+    if connection.vendor == 'postgresql':
+        schema_editor.execute("DROP EXTENSION IF EXISTS vector;")
 
 
 class Migration(migrations.Migration):
@@ -8,8 +19,8 @@ class Migration(migrations.Migration):
     run_before = [('parser', '0001_initial')]
 
     operations = [
-        migrations.RunSQL(
-            sql="CREATE EXTENSION IF NOT EXISTS vector;",
-            reverse_sql="DROP EXTENSION IF EXISTS vector;"
+        migrations.RunPython(
+            enable_pgvector,
+            reverse_code=disable_pgvector
         )
     ]

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,8 +8,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-50">
-    <nav class="bg-blue-600 text-white shadow-lg">
+<body class="bg-gray-50 h-full flex flex-col min-h-screen">
+
+    <!-- Navbar -->
+    <nav class="bg-blue-600 text-white shadow-lg flex-shrink-0">
         <div class="container mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
                 <a href="{% url 'home' %}" class="text-2xl font-bold">SkillMap Nepal</a>
@@ -28,10 +30,14 @@
         </div>
     </nav>
 
-    <main class="container mx-auto px-4 py-8">
+    <!-- Main content grows to fill available space -->
+    <main class="flex-grow container mx-auto px-4 py-8">
         {% if messages %}
             {% for message in messages %}
-                <div class="mb-4 p-4 rounded {% if message.tags == 'error' %}bg-red-100 text-red-700{% elif message.tags == 'success' %}bg-green-100 text-green-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                <div class="mb-4 p-4 rounded
+                    {% if message.tags == 'error' %}bg-red-100 text-red-700
+                    {% elif message.tags == 'success' %}bg-green-100 text-green-700
+                    {% else %}bg-blue-100 text-blue-700{% endif %}">
                     {{ message }}
                 </div>
             {% endfor %}
@@ -40,7 +46,8 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="bg-gray-800 text-white mt-12 py-6">
+    <!-- Footer always at bottom -->
+    <footer class="bg-gray-800 text-white py-6 flex-shrink-0">
         <div class="container mx-auto px-4 text-center">
             <p>&copy; 2026 SkillMap Nepal. AI-powered job skill gap analyzer.</p>
         </div>

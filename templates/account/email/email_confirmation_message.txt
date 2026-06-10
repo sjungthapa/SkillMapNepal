@@ -1,0 +1,11 @@
+Hi {{ user.full_name }},
+
+Welcome to SkillMap Nepal! Please confirm your email address by clicking the link below:
+
+{{ activate_url }}
+
+This link expires in 3 days.
+
+If you did not sign up, please ignore this email.
+
+— SkillMap Nepal Team
