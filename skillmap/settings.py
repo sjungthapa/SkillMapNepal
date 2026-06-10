@@ -280,3 +280,15 @@ if 'sqlite' in db_url and any(cmd in sys.argv for cmd in ['migrate', 'makemigrat
         "=" * 80,
         RuntimeWarning
     )
+
+
+# Railway Deployment Settings
+RAILWAY_STATIC_URL = os.environ.get('RAILWAY_STATIC_URL', '')
+if RAILWAY_STATIC_URL:
+    ALLOWED_HOSTS.append(RAILWAY_STATIC_URL)
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.railway.app',
+    'https://skillmapnepal.com.np',
+    'https://www.skillmapnepal.com.np',
+]

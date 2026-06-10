@@ -1,13 +1,13 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
-# Set environment variables
+# Environment
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV PORT=8000
 
-# Set work directory
 WORKDIR /app
 
-# Install system dependencies
+# System dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
@@ -16,22 +16,22 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY requirements.txt /app/
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+# Python dependencies
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Install spaCy model
-RUN python -m spacy download en_core_web_md
-
-# Install Playwright browsers
-RUN playwright install chromium && \
-    playwright install-deps chromium
+RUN pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.1/en_core_web_md-3.7.1-py3-none-any.whl
 
 # Copy project
-COPY . /app/
+COPY . .
 
 # Create necessary directories
 RUN mkdir -p /app/staticfiles /app/media
 
-EXPOSE 8000
+# Collect static files
+RUN python manage.py collectstatic --noinput || true
+
+EXPOSE $PORT
+
+CMD gunicorn skillmap.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
