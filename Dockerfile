@@ -34,4 +34,8 @@ RUN python manage.py collectstatic --noinput || true
 
 EXPOSE $PORT
 
-CMD gunicorn skillmap.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+CMD python manage.py migrate && python manage.py shell -c "from django.contrib.sites.models import Site; Site.objects.update_or_create(id=1, defaults={'domain': 'skillmapnepal.onrender.com', 'name': 'SkillMap Nepal'})" && gunicorn skillmap.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+
+RUN echo "Scraper will run via Celery beat in production"
+
+CMD python manage.py migrate && python manage.py scrape_jobs && gunicorn skillmap.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
