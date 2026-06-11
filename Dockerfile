@@ -4,6 +4,7 @@ FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PORT=8000
+ENV MALLOC_ARENA_MAX=2
 
 WORKDIR /app
 
@@ -34,8 +35,7 @@ RUN python manage.py collectstatic --noinput || true
 
 EXPOSE $PORT
 
-CMD python manage.py migrate && python manage.py shell -c "from django.contrib.sites.models import Site; Site.objects.update_or_create(id=1, defaults={'domain': 'skillmapnepal.onrender.com', 'name': 'SkillMap Nepal'})" && gunicorn skillmap.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
-
-RUN echo "Scraper will run via Celery beat in production"
-
-CMD python manage.py migrate && python manage.py scrape_jobs && gunicorn skillmap.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+# Run migrations then start gunicorn with 1 worker to fit in 512MB free tier RAM
+CMD python manage.py migrate && \
+    python manage.py shell -c "from django.contrib.sites.models import Site; Site.objects.update_or_create(id=1, defaults={'domain': 'skillmapnepal.onrender.com', 'name': 'SkillMap Nepal'})" && \
+    gunicorn skillmap.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 300 --preload
