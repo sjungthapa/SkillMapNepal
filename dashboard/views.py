@@ -9,26 +9,13 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.conf import settings
 
-import cloudinary
-import cloudinary.uploader
-
 from parser.models import CVUpload, ExtractedSkill
 from analysis.models import SkillGapReport, GapItem
 from roadmap.models import Roadmap, RoadmapItem, Resource
 from scraper.models import JobPosting, JobSkill
 from parser.tasks import parse_cv_task
-from parser.utils import parse_cv
 
 logger = logging.getLogger(__name__)
-
-
-def get_cloudinary():
-    cloudinary.config(
-        cloud_name=settings.CLOUDINARY_STORAGE['CLOUD_NAME'],
-        api_key=settings.CLOUDINARY_STORAGE['API_KEY'],
-        api_secret=settings.CLOUDINARY_STORAGE['API_SECRET']
-    )
-    return cloudinary
 
 
 def home(request):
@@ -72,45 +59,38 @@ def upload_cv(request):
         tmp_path = None
 
         try:
+            # Only save the file to a temp path here — fast, no parsing/upload yet
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                 for chunk in cv_file.chunks():
                     tmp.write(chunk)
                 tmp_path = tmp.name
 
-            parsed_data = parse_cv(tmp_path, is_local=True)
-            logger.info(f"Parsed CV: {len(parsed_data.get('skills', []))} skills found")
-
-            cl = get_cloudinary()
-            upload_result = cl.uploader.upload(
-                tmp_path,
-                folder='skillmap/cvs',
-                resource_type='raw',
-                type='upload',
-                access_mode='public',
-            )
-            file_url = upload_result['secure_url']
-            logger.info(f"Uploaded to Cloudinary: {file_url}")
-
+            # Create the CVUpload record immediately with 'pending' status
             cv_upload = CVUpload.objects.create(
                 user=request.user,
-                file_url=file_url,
+                file_url='',  # filled in by the background task once uploaded to Cloudinary
                 original_filename=cv_file.name,
-                parse_status='processing'
+                parse_status='pending'
             )
 
-            parse_cv_task.delay(str(cv_upload.id), parsed_data=parsed_data)
+            # Hand off ALL heavy work (parsing + Cloudinary upload) to Celery.
+            # tmp_path is passed so the task can read the file directly without
+            # waiting on this request.
+            parse_cv_task.delay(
+                str(cv_upload.id),
+                tmp_path=tmp_path,
+                original_filename=cv_file.name,
+            )
 
-            messages.success(request, 'CV uploaded successfully! Analysis in progress...')
+            # Redirect immediately — don't wait for parsing/upload to finish
             return redirect('dashboard:report_status', report_id=cv_upload.id)
 
         except Exception as e:
-            logger.error(f"Error uploading CV: {e}", exc_info=True)
+            logger.error(f"Error starting CV upload: {e}", exc_info=True)
             messages.error(request, f'Error uploading CV: {str(e)}')
-            return redirect('dashboard:upload_cv')
-
-        finally:
             if tmp_path and os.path.exists(tmp_path):
                 os.unlink(tmp_path)
+            return redirect('dashboard:upload_cv')
 
     cv_uploads = CVUpload.objects.filter(
         user=request.user
@@ -129,6 +109,9 @@ def report_status(request, report_id):
             'has_report': report is not None,
             'ready': False,
         }
+        if cv_upload.parse_status == 'failed':
+            status_data['ready'] = True
+            status_data['error_message'] = cv_upload.error_message or 'CV parsing failed.'
         if report:
             status_data.update({
                 'report_status': report.status,
